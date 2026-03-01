@@ -411,8 +411,8 @@ WASD / стрелки — ходить (ПК)<br>
     const lines = [];
     const kids = ui.log.children;
     for(let i=Math.max(0,kids.length-3); i<kids.length; i++) lines.push(kids[i].textContent);
-    ui.statusLog.textContent = lines.join('
-');
+    ui.statusLog.textContent = lines.join('\n');
+
   }
   function resetLog(){ ui.log.innerHTML=''; ui.statusLog.textContent=''; }
 
