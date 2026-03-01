@@ -238,7 +238,44 @@
       font-size:18px;
     }
 
-    @media (max-width: 980px){
+    
+    /* Mobile joystick */
+    .joy{
+      position:fixed;
+      right:18px;
+      bottom:18px;
+      width:150px; height:150px;
+      border-radius:999px;
+      background: radial-gradient(circle at 50% 50%, rgba(255,255,255,.10), rgba(255,255,255,.04) 55%, rgba(0,0,0,.00) 70%);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.10), 0 12px 40px rgba(0,0,0,.45);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      display:none;
+      z-index:90;
+      touch-action:none;
+      user-select:none;
+    }
+    .joy:before{
+      content:"";
+      position:absolute; inset:18px;
+      border-radius:999px;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.10);
+      opacity:.7;
+    }
+    .joyStick{
+      position:absolute;
+      left:50%; top:50%;
+      width:72px; height:72px;
+      margin-left:-36px; margin-top:-36px;
+      border-radius:999px;
+      background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.22), rgba(255,255,255,.10) 45%, rgba(255,255,255,.06));
+      box-shadow: 0 14px 40px rgba(0,0,0,.55), inset 0 0 0 1px rgba(255,255,255,.14);
+      opacity:.9;
+      pointer-events:none;
+      transform: translate3d(0,0,0);
+    }
+
+@media (max-width: 980px){
       .wrap{ padding:0; }
       .ui{ width:100vw; height:100vh; padding-top:44px; box-sizing:border-box; }
       /* hide desktop panels */
@@ -258,8 +295,9 @@
       }
       body.invOpen .invClose{ display:inline-flex; align-items:center; justify-content:center; }
       body.invOpen .fab{ display:none; }
-      /* make canvas fill screen */
-      canvas{ width:100vw; height:100vh; touch-action:none; }
+      /* canvas: fit to screen without stretching */
+      canvas{ height:calc(100vh - 44px); width:auto; max-width:100vw; display:block; margin:0 auto; touch-action:none; }
+      .joy{ display:block; }
     }
     @media (min-width: 981px){
       .fab{ display:none; }
@@ -349,6 +387,11 @@ WASD / стрелки — ходить (ПК)<br>
 
     <!-- GAME -->
     <canvas id="c" width="980" height="720"></canvas>
+    <!-- Mobile Joystick -->
+    <div class="joy" id="joy">
+      <div class="joyStick" id="joyStick"></div>
+    </div>
+
 </div>
 </div>
 
@@ -388,6 +431,8 @@ WASD / стрелки — ходить (ПК)<br>
     shopBuyList: document.getElementById('shopBuyList'),
     shopSellList: document.getElementById('shopSellList'),
   };
+
+  const IS_MOBILE = window.matchMedia('(max-width: 980px)').matches;
 
   const W = canvas.width, H = canvas.height;
 
@@ -2399,8 +2444,28 @@ let last=performance.now();
       player.iFrames=Math.max(0, player.iFrames-dt);
     }
 
-    // Auto-move along path (tap-to-move)
-    if(state.autoPath && state.autoPath.length && !state.shop.open && !state.gameOver){
+    
+    // Joystick movement (mobile): step-by-step, no "flying"
+    if(IS_MOBILE && joy && joy.active && joy.mag > joy.dead && !state.shop.open && !state.gameOver){
+      joy.moveCd -= dt;
+      if(joy.moveCd <= 0){
+        const ax = Math.abs(joy.dx), ay = Math.abs(joy.dy);
+        let mdx=0, mdy=0;
+        if(ax >= ay){
+          mdx = joy.dx > 0 ? 1 : -1;
+        }else{
+          mdy = joy.dy > 0 ? 1 : -1;
+        }
+        tryMove(mdx, mdy);
+        // speed tuned for grid feel
+        joy.moveCd = 0.10;
+      }
+    }else if(joy){
+      joy.moveCd = Math.min(joy.moveCd, 0.10);
+    }
+
+// Auto-move along path (tap-to-move)
+    if(!IS_MOBILE && state.autoPath && state.autoPath.length && !state.shop.open && !state.gameOver){
       state.autoMoveCd -= dt;
       if(state.autoMoveCd <= 0){
         const next = state.autoPath[0];
@@ -2558,17 +2623,94 @@ let last=performance.now();
     const tx = Math.floor(wx);
     const ty = Math.floor(wy);
     setMoveTargetTile(tx,ty);
+  
+  // ==============================
+  // Mobile joystick (right-bottom)
+  // ==============================
+  const joyEl = document.getElementById('joy');
+  const joyStickEl = document.getElementById('joyStick');
+  const joy = {
+    active:false,
+    id:null,
+    cx:0, cy:0,
+    dx:0, dy:0,
+    mag:0,
+    r:52, // stick travel radius (px)
+    dead:0.18,
+    moveCd:0
+  };
+
+  function joyReset(){
+    joy.active=false; joy.id=null;
+    joy.dx=0; joy.dy=0; joy.mag=0;
+    joyStickEl.style.transform = 'translate3d(0px,0px,0)';
   }
 
-  // Touch handlers
-  canvas.addEventListener('touchstart', (e)=>{
+  function joyUpdate(clientX, clientY){
+    const rect = joyEl.getBoundingClientRect();
+    // Use center of the pad as neutral
+    joy.cx = rect.left + rect.width/2;
+    joy.cy = rect.top + rect.height/2;
+    const vx = clientX - joy.cx;
+    const vy = clientY - joy.cy;
+    const dist = Math.hypot(vx,vy);
+    const max = joy.r;
+    const cl = dist > max ? max/dist : 1;
+    const px = vx*cl;
+    const py = vy*cl;
+
+    joyStickEl.style.transform = `translate3d(${px}px,${py}px,0)`;
+
+    const ndx = (dist>0) ? vx/dist : 0;
+    const ndy = (dist>0) ? vy/dist : 0;
+    const nmag = Math.min(1, dist/max);
+
+    joy.dx = ndx;
+    joy.dy = ndy;
+    joy.mag = nmag;
+  }
+
+  // Prefer Pointer Events (covers iOS Safari/Chrome)
+  joyEl.addEventListener('pointerdown', (e)=>{
     ensureAudio();
     if(state.shop.open) return;
     if(document.body.classList.contains('invOpen')) return;
-    const t = e.changedTouches[0];
-    tapToMoveFromEvent(t.clientX, t.clientY);
+    joy.active = true;
+    joy.id = e.pointerId;
+    joyEl.setPointerCapture(e.pointerId);
+    joyUpdate(e.clientX, e.clientY);
     e.preventDefault();
   }, {passive:false});
+
+  joyEl.addEventListener('pointermove', (e)=>{
+    if(!joy.active || e.pointerId !== joy.id) return;
+    joyUpdate(e.clientX, e.clientY);
+    e.preventDefault();
+  }, {passive:false});
+
+  joyEl.addEventListener('pointerup', (e)=>{
+    if(e.pointerId !== joy.id) return;
+    joyReset();
+    e.preventDefault();
+  }, {passive:false});
+
+  joyEl.addEventListener('pointercancel', (e)=>{
+    if(e.pointerId !== joy.id) return;
+    joyReset();
+    e.preventDefault();
+  }, {passive:false});
+
+}
+
+  // Touch handlers (movement uses joystick on mobile)
+  canvas.addEventListener('touchstart', (e)=>{
+    ensureAudio();
+    // On mobile we use the joystick; canvas taps are reserved for future interactions.
+    if(state.shop.open) return;
+    if(document.body.classList.contains('invOpen')) return;
+    e.preventDefault();
+  }, {passive:false});
+
 
   // Mouse: left click to move (desktop convenience), right click/ctrl for attack keeps old feel
   canvas.addEventListener('click', (e)=>{
