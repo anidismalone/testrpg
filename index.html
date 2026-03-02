@@ -5,10 +5,52 @@
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>RAKUS Roguelike — Loot / Shop / Icons / Elites</title>
   <style>
-    :root{ color-scheme: dark; }
+    :root{
+      color-scheme: dark;
+      --game-w: 980px;
+      --game-h: 720px;
+      --log-h: 176px;
+      --stack-gap: 12px;
+    }
     html,body{ margin:0; height:100%; background:#07080b; font-family: ui-monospace, Menlo, Consolas, monospace; }
     .wrap{ height:100%; display:flex; align-items:center; justify-content:center; padding:16px; box-sizing:border-box;}
     .ui{ display:flex; gap:14px; align-items:flex-start; position:relative; }
+    .gameCol{
+      position:relative;
+      width:var(--game-w);
+      display:flex;
+      flex-direction:column;
+      gap:var(--stack-gap);
+    }
+    .logDock{
+      height:var(--log-h);
+      border-radius:14px;
+      background: rgba(0,0,0,.22);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.06), 0 12px 30px rgba(0,0,0,.35);
+      overflow:hidden;
+    }
+    .cornerHud{
+      position:absolute;
+      top:12px;
+      right:12px;
+      z-index:35;
+      min-width:200px;
+      padding:10px 12px;
+      border-radius:12px;
+      background: rgba(5,8,16,0.74);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.14), 0 8px 24px rgba(0,0,0,.45);
+      backdrop-filter: blur(6px);
+      pointer-events:none;
+    }
+    .cornerRow{
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      font-size:12px;
+      margin:4px 0;
+      color:rgba(236,242,255,.95);
+    }
+    .cornerVal{ font-weight:700; }
 
     canvas{
       border-radius:18px;
@@ -28,6 +70,9 @@
         linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.03));
       box-shadow: 0 18px 70px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.08);
       overflow:hidden;
+      height: calc(var(--game-h) + var(--stack-gap) + var(--log-h));
+      box-sizing:border-box;
+      overflow-y:auto;
     }
     .panel.inventory{
       background:
@@ -71,7 +116,7 @@
     .keys{ margin-top:10px; font-size:12px; opacity:.82; line-height:1.35; }
 
     .log{
-      margin-top:10px; height:180px; overflow:auto; font-size:12px; opacity:.88;
+      margin-top:0; height:100%; overflow:auto; font-size:12px; opacity:.88;
       padding:10px; border-radius:14px; background: rgba(0,0,0,.22);
       box-shadow: inset 0 0 0 1px rgba(255,255,255,.06);
     }
@@ -143,6 +188,23 @@
       backdrop-filter: blur(3px);
     }
     .overlay.show{ display:flex; }
+    .deathOverlay{
+      position:absolute; inset:0;
+      display:none; align-items:center; justify-content:center;
+      z-index:45;
+      background: rgba(0,0,0,.58);
+      backdrop-filter: blur(4px);
+    }
+    .deathOverlay.show{ display:flex; }
+    .deathCard{
+      width:min(420px, calc(100% - 28px));
+      border-radius:16px;
+      padding:16px;
+      background: linear-gradient(180deg, rgba(255,255,255,.09), rgba(255,255,255,.03));
+      box-shadow: 0 18px 70px rgba(0,0,0,.72), inset 0 0 0 1px rgba(255,255,255,.12);
+    }
+    .deathTitle{ font-size:16px; margin-bottom:8px; }
+    .deathText{ font-size:12px; opacity:.82; line-height:1.35; margin-bottom:12px; }
     .shop{
       width: 780px;
       border-radius:18px;
@@ -192,24 +254,6 @@
     }
     .iconSvg{ width:22px; height:22px; }
     .itemLine{ display:flex; gap:10px; align-items:center; }
-
-  
-    #statusBar{
-      position:fixed; left:0; right:0; top:0; z-index:50;
-      pointer-events:none;
-      padding:10px 12px;
-      box-sizing:border-box;
-      background: linear-gradient(to bottom, rgba(5,6,10,0.92), rgba(5,6,10,0.35), rgba(5,6,10,0));
-    }
-    #statusLog{
-      white-space:pre-line;
-      font-size:12px;
-      line-height:1.25;
-      color:rgba(240,245,255,0.92);
-      text-shadow:0 2px 10px rgba(0,0,0,0.75);
-      max-width:1000px;
-      margin:0 auto;
-    }
 
     .fab{
       position:fixed;
@@ -278,6 +322,9 @@
 @media (max-width: 980px){
       .wrap{ padding:0; }
       .ui{ width:100vw; height:100vh; padding-top:44px; box-sizing:border-box; }
+      .gameCol{ width:100vw; gap:0; }
+      .logDock{ display:none; }
+      .cornerHud{ right:10px; top:52px; min-width:160px; }
       /* hide desktop panels */
       #invPanel{ display:none; }
       .fab{ display:block; }
@@ -307,7 +354,6 @@
 </head>
 <body>
 <div class="wrap">
-  <div id="statusBar"><div id="statusLog"></div><div id="log" style="display:none"></div></div>
   <div class="ui" id="uiRoot">
 
     <!-- Tooltip -->
@@ -331,6 +377,13 @@
           <div class="title">💰 Твои предметы (Продать)</div>
           <div id="shopSellList"></div>
         </div>
+      </div>
+    </div>
+    <div class="deathOverlay" id="deathOverlay">
+      <div class="deathCard">
+        <div class="deathTitle">☠️ Ты погиб</div>
+        <div class="deathText" id="deathText">Нажми кнопку, чтобы возродиться в деревне.</div>
+        <button id="respawnBtn">Возрождение</button>
       </div>
     </div>
 
@@ -386,7 +439,15 @@ WASD / стрелки — ходить (ПК)<br>
     </div>
 
     <!-- GAME -->
-    <canvas id="c" width="980" height="720"></canvas>
+    <div class="gameCol">
+      <canvas id="c" width="980" height="720"></canvas>
+      <div class="cornerHud">
+        <div class="cornerRow"><span>Этаж</span><span class="cornerVal" id="floorHud">1/5</span></div>
+        <div class="cornerRow"><span>Осталось мобов</span><span class="cornerVal" id="mobsLeft">0</span></div>
+        <div class="cornerRow"><span>Таймер</span><span class="cornerVal" id="runTimer">00:00</span></div>
+      </div>
+      <div class="logDock"><div id="log" class="log"></div></div>
+    </div>
     <!-- Mobile Joystick -->
     <div class="joy" id="joy">
       <div class="joyStick" id="joyStick"></div>
@@ -403,6 +464,9 @@ WASD / стрелки — ходить (ПК)<br>
 
   const ui = {
     floor: document.getElementById('floor'),
+    floorHud: document.getElementById('floorHud'),
+    mobsLeft: document.getElementById('mobsLeft'),
+    runTimer: document.getElementById('runTimer'),
     lvl: document.getElementById('lvl'),
     gold: document.getElementById('gold'),
     hpText: document.getElementById('hpText'),
@@ -417,7 +481,6 @@ WASD / стрелки — ходить (ПК)<br>
     critState: document.getElementById('critState'),
     critPill: document.getElementById('critPill'),
     log: document.getElementById('log'),
-    statusLog: document.getElementById('statusLog'),
     musicBtn: document.getElementById('musicBtn'),
     restartBtn: document.getElementById('restartBtn'),
     equipGrid: document.getElementById('equipGrid'),
@@ -430,6 +493,9 @@ WASD / стрелки — ходить (ПК)<br>
     shopGold: document.getElementById('shopGold'),
     shopBuyList: document.getElementById('shopBuyList'),
     shopSellList: document.getElementById('shopSellList'),
+    deathOverlay: document.getElementById('deathOverlay'),
+    deathText: document.getElementById('deathText'),
+    respawnBtn: document.getElementById('respawnBtn'),
   };
 
   const IS_MOBILE = window.matchMedia('(max-width: 980px)').matches;
@@ -444,6 +510,7 @@ WASD / стрелки — ходить (ПК)<br>
   function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
   function lerp(a,b,t){ return a + (b-a)*t; }
   function man(ax,ay,bx,by){ return Math.abs(ax-bx)+Math.abs(ay-by); }
+  function dist(ax,ay,bx,by){ return Math.hypot(ax-bx, ay-by); }
 
   function log(msg){
     const d = document.createElement('div');
@@ -451,15 +518,9 @@ WASD / стрелки — ходить (ПК)<br>
     ui.log.appendChild(d);
     // keep reasonable history
     while(ui.log.children.length>250) ui.log.removeChild(ui.log.firstChild);
-
-    // status bar: last 3 lines
-    const lines = [];
-    const kids = ui.log.children;
-    for(let i=Math.max(0,kids.length-3); i<kids.length; i++) lines.push(kids[i].textContent);
-    ui.statusLog.textContent = lines.join('\n');
-
+    ui.log.scrollTop = ui.log.scrollHeight;
   }
-  function resetLog(){ ui.log.innerHTML=''; ui.statusLog.textContent=''; }
+  function resetLog(){ ui.log.innerHTML=''; }
 
   // World
   const TILE = 28;
@@ -470,6 +531,7 @@ WASD / стрелки — ходить (ПК)<br>
   const ENEMY = { ORC:'orc', WOLF:'wolf', WRAITH:'wraith', BOSS:'boss' };
 
   const RUN_FLOORS = 5;
+  const LEADERBOARD_KEY = 'rakus_run_leaderboard_v1';
   const ADVENTURE_TIERS = [
     {name:'Пещеры новичков', min:1,  max:5},
     {name:'Старые катакомбы', min:5,  max:10},
@@ -525,6 +587,9 @@ WASD / стрелки — ходить (ПК)<br>
       maxLvl:5,
       floors:5,
       bossDefeated:false,
+      pendingBoss:false,
+      bossSpawn:null,
+      elapsedMs:0,
     }
   };
 
@@ -545,6 +610,53 @@ WASD / стрелки — ходить (ПК)<br>
 
   function bagCount(){ return player.bag.filter(x=>x!==null).length; }
   function bagFirstEmpty(){ return player.bag.findIndex(x=>x===null); }
+  function aliveMobsLeft(){ return state.enemies.filter(e=>e.alive && !e.isBoss).length; }
+
+  function formatRunTime(ms){
+    const total = Math.max(0, Math.floor(ms/1000));
+    const mm = Math.floor(total/60);
+    const ss = total%60;
+    return `${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
+  }
+
+  function loadLeaderboard(){
+    try{
+      const raw = localStorage.getItem(LEADERBOARD_KEY);
+      if(!raw) return [];
+      const parsed = JSON.parse(raw);
+      if(!Array.isArray(parsed)) return [];
+      return parsed.filter(x=>x && Number.isFinite(x.ms)).slice(0, 20);
+    } catch(_e){
+      return [];
+    }
+  }
+  function saveLeaderboard(rows){
+    try{ localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(rows)); } catch(_e){}
+  }
+  function pushLeaderboard(ms){
+    const rows = loadLeaderboard();
+    rows.push({ ms: Math.floor(ms), lvl: player.lvl, at: new Date().toISOString() });
+    rows.sort((a,b)=>a.ms-b.ms);
+    const top = rows.slice(0, 10);
+    saveLeaderboard(top);
+    return top;
+  }
+  function logLeaderboard(title='🏁 Лидерборд (топ-10)'){
+    const rows = loadLeaderboard();
+    log(title);
+    if(!rows.length){
+      log('• Пока нет успешных прохождений.');
+      return;
+    }
+    rows.slice(0,10).forEach((r,i)=>log(`${i+1}. ${formatRunTime(r.ms)} • LVL ${r.lvl}`));
+  }
+  function showDeathOverlay(text){
+    ui.deathText.textContent = text || 'Нажми кнопку, чтобы возродиться в деревне.';
+    ui.deathOverlay.classList.add('show');
+  }
+  function hideDeathOverlay(){
+    ui.deathOverlay.classList.remove('show');
+  }
 
   // Helpers
   function emptyMap(){
@@ -723,10 +835,10 @@ WASD / стрелки — ходить (ПК)<br>
     return pref + 'Оружие';
   }
 
-  function genGearDrop(floor, enemyLevel){
+  function genGearDrop(floor, enemyLevel, forcedSlot=null){
     const r = rarityRoll(floor);
     const m = rarityMult(r);
-    const slot = RNG.pick([SLOT.WEAPON, SLOT.ARMOR, SLOT.RING, SLOT.AMULET]);
+    const slot = forcedSlot || RNG.pick([SLOT.WEAPON, SLOT.ARMOR, SLOT.RING, SLOT.AMULET]);
     const lvlReq = Math.max(1, Math.min(99, Math.floor(enemyLevel + RNG.int(2) - 1)));
     const base = Math.max(1, Math.floor((floor*0.65 + enemyLevel*0.5)));
 
@@ -931,14 +1043,14 @@ WASD / стрелки — ходить (ПК)<br>
   }
 
   const ELITE_MODS = [
-    { name:'Frenzied',  atkMul:1.25, hpMul:1.12, defAdd:0, aura:'rgba(255,110,120,0.28)', bonusGold:[10,18] },
-    { name:'Stony',     atkMul:1.05, hpMul:1.25, defAdd:1, aura:'rgba(160,170,190,0.24)', bonusGold:[10,18] },
-    { name:'Vampiric',  atkMul:1.12, hpMul:1.18, defAdd:0, aura:'rgba(255,210,120,0.24)', bonusGold:[12,22], lifesteal:8 },
-    { name:'Arcane',    atkMul:1.15, hpMul:1.15, defAdd:0, aura:'rgba(180,160,255,0.26)', bonusGold:[12,22], cdrDrain:0.08 },
+    { name:'Frenzied',  atkMul:1.36, hpMul:1.30, defAdd:1, aura:'rgba(255,110,120,0.28)', bonusGold:[12,20] },
+    { name:'Stony',     atkMul:1.20, hpMul:1.50, defAdd:2, aura:'rgba(160,170,190,0.24)', bonusGold:[12,20] },
+    { name:'Vampiric',  atkMul:1.28, hpMul:1.40, defAdd:1, aura:'rgba(255,210,120,0.24)', bonusGold:[14,24], lifesteal:10 },
+    { name:'Arcane',    atkMul:1.30, hpMul:1.35, defAdd:1, aura:'rgba(180,160,255,0.26)', bonusGold:[14,24], cdrDrain:0.10 },
   ];
 
   
-  function makeEnemy(type, x, y, lvl){
+  function makeEnemy(type, x, y, lvl, forceElite=false){
     const base = enemyBase(type);
 
     // Basic scaling (kept close to v4 feel)
@@ -948,10 +1060,10 @@ WASD / стрелки — ходить (ПК)<br>
 
     let elite = null;
 
-    // Elites: only for non-boss, from floor 2+
-    if(type!==ENEMY.BOSS && state.floor>=2){
-      const chance = Math.min(0.18, 0.05 + state.floor*0.02);
-      if(RNG.chance(chance)){
+    // Elites: rare, only non-boss
+    if(type!==ENEMY.BOSS){
+      const chance = Math.min(0.05, 0.015 + state.floor*0.006);
+      if(forceElite || RNG.chance(chance)){
         elite = JSON.parse(JSON.stringify(RNG.pick(ELITE_MODS)));
         hp  = Math.floor(hp  * elite.hpMul);
         atk = Math.floor(atk * elite.atkMul);
@@ -979,8 +1091,8 @@ WASD / стрелки — ходить (ПК)<br>
     };
   }
 
-function spawnEnemy(isBoss){
-    const p = randomWalkableCell(true);
+function spawnEnemy(isBoss, opts={}){
+    const p = opts.pos || randomWalkableCell(true);
     const type = isBoss ? ENEMY.BOSS : RNG.pick([ENEMY.ORC,ENEMY.WOLF,ENEMY.WRAITH,ENEMY.ORC,ENEMY.WOLF]);
 
     const minL = state.run.active ? state.run.minLvl : 1;
@@ -992,9 +1104,70 @@ function spawnEnemy(isBoss){
 
     if(isBoss) lvl = clamp(lvl + 2, minL, maxL + 2);
 
-    const e = makeEnemy(type, p.x, p.y, lvl);
+    const e = makeEnemy(type, p.x, p.y, lvl, !!opts.forceElite);
     if(isBoss) e.isBoss=true;
     state.enemies.push(e);
+    return e;
+  }
+  function findSpawnNear(x,y, radius=6){
+    const opts = [];
+    for(let dy=-radius; dy<=radius; dy++){
+      for(let dx=-radius; dx<=radius; dx++){
+        const nx = x + dx;
+        const ny = y + dy;
+        if(nx<2||ny<2||nx>=MAP_W-2||ny>=MAP_H-2) continue;
+        if(isBlocked(nx,ny)) continue;
+        if(enemyAt(nx,ny)) continue;
+        if(nx===player.x && ny===player.y) continue;
+        if(man(nx,ny,x,y) > radius) continue;
+        opts.push({x:nx,y:ny});
+      }
+    }
+    return opts.length ? RNG.pick(opts) : randomWalkableCell(true);
+  }
+  function spawnElitePack(anchor){
+    const packSize = 2 + RNG.int(2);
+    let created = 0;
+    for(let i=0; i<packSize; i++){
+      const p = findSpawnNear(anchor.x, anchor.y, 7);
+      const e = spawnEnemy(false, {forceElite:true, pos:p});
+      if(e?.elite) created++;
+    }
+    return created;
+  }
+  function findPortalSpotNear(x,y){
+    const opts = [];
+    for(let r=2; r<=5; r++){
+      for(let dy=-r; dy<=r; dy++){
+        for(let dx=-r; dx<=r; dx++){
+          const nx=x+dx, ny=y+dy;
+          if(nx<2||ny<2||nx>=MAP_W-2||ny>=MAP_H-2) continue;
+          if(man(nx,ny,x,y) < 2) continue;
+          if(isBlocked(nx,ny)) continue;
+          if(enemyAt(nx,ny)) continue;
+          if(nx===player.x && ny===player.y) continue;
+          opts.push({x:nx,y:ny});
+        }
+      }
+      if(opts.length) break;
+    }
+    if(opts.length) return RNG.pick(opts);
+    return findLandingNear(x,y);
+  }
+  function trySpawnBossIfCleared(){
+    if(state.mode!=='dungeon' || !state.run.pendingBoss || state.portalActive) return;
+    if(aliveMobsLeft()>0) return;
+    const p = state.run.bossSpawn || state.exit;
+    const minL = state.run.active ? state.run.minLvl : 1;
+    const maxL = state.run.active ? state.run.maxLvl : Math.max(5, minL+4);
+    const lvlBase = minL + Math.floor((state.floor-1) * ((maxL-minL)/Math.max(1,(RUN_FLOORS-1))));
+    const bossLvl = clamp(lvlBase + 2, minL, maxL + 2);
+    const b = makeEnemy(ENEMY.BOSS, p.x, p.y, bossLvl);
+    b.isBoss = true;
+    state.enemies.push(b);
+    state.run.pendingBoss = false;
+    log('👑 Все монстры зачищены. Босс выходит на арену!');
+    updateHUD();
   }
 
   // ==============================
@@ -1085,17 +1258,16 @@ function dropGoldAt(x,y, enemy){
 }
 
 function dropLootAt(x,y, enemy){
-  // значительно меньше дропа:
-  // обычные: ~18% на предмет
-  // элиты: 60% (1 предмет)
-  // босс: 2 предмета гарантированно (+ шанс на третий)
+  // обычные: без шмота
+  // элиты: ровно 1 предмет
+  // босс: 2-3 предмета
   let drops = 0;
   if(enemy.type===ENEMY.BOSS){
     drops = 2 + (RNG.chance(0.25)?1:0);
   } else if(enemy.elite){
-    drops = RNG.chance(0.60) ? 1 : 0;
+    drops = 1;
   } else {
-    drops = RNG.chance(0.18) ? 1 : 0;
+    drops = 0;
   }
 
   for(let i=0;i<drops;i++){
@@ -1193,7 +1365,7 @@ function dropLootAt(x,y, enemy){
       if(target.type===ENEMY.BOSS){
         state.portalActive = true;
         state.run.bossDefeated = true;
-        state.exit = {x: target.x, y: target.y};
+        state.exit = findPortalSpotNear(target.x, target.y);
         const xp = (10 + Math.floor(target.lvl*2.2) + Math.floor(state.floor*1.2));
         gainXP(Math.floor(xp));
         log(`🏆 Босс повержен! Открывается портал ${state.floor>=RUN_FLOORS ? 'домой' : 'на следующий этаж'}. XP+${Math.floor(xp)}`);
@@ -1201,6 +1373,11 @@ function dropLootAt(x,y, enemy){
         const xp = (3 + Math.floor(target.lvl*1.4) + Math.floor(state.floor*0.6)) * (target.elite?1.4:1);
         log(`💥 Враг повержен (LVL ${target.lvl})${target.elite?` • ELITE ${target.elite.name}`:''}. XP+${Math.floor(xp)}`);
         gainXP(Math.floor(xp));
+        const left = Math.max(0, aliveMobsLeft()-1);
+        if(state.mode==='dungeon' && state.run.pendingBoss){
+          if(left>0) log(`🧹 До босса осталось мобов: ${left}`);
+          else log('🧹 Этаж зачищен. Босс вот-вот появится...');
+        }
       }
     }
     return dmg;
@@ -1224,6 +1401,7 @@ function dropLootAt(x,y, enemy){
 
   function cleanupDead(){
     state.enemies = state.enemies.filter(e=>e.alive);
+    trySpawnBossIfCleared();
   }
 
   function enemyTurn(){
@@ -1365,16 +1543,17 @@ function dropLootAt(x,y, enemy){
 
     for(let i=0;i<n;i++){
       const fakeLvl = clamp(minL + RNG.int(Math.max(1, (maxL-minL)+1)), 1, 99);
-      const it = genGearDrop(floorScale, fakeLvl);
+      let preferredSlot = null;
 
       // slight theme differences
       if(state.shop.kind==='shop'){
         // чаще кольца/амулеты
-        if(RNG.chance(0.55)) it.slot = RNG.pick([SLOT.RING, SLOT.AMULET]);
+        if(RNG.chance(0.55)) preferredSlot = RNG.pick([SLOT.RING, SLOT.AMULET]);
       } else {
         // кузнец — чаще оружие/броня
-        if(RNG.chance(0.60)) it.slot = RNG.pick([SLOT.WEAPON, SLOT.ARMOR]);
+        if(RNG.chance(0.60)) preferredSlot = RNG.pick([SLOT.WEAPON, SLOT.ARMOR]);
       }
+      const it = genGearDrop(floorScale, fakeLvl, preferredSlot);
 
       it.price = Math.max(10, Math.floor((it.price||20) * 1.06));
       state.shop.stock.push(it);
@@ -1569,9 +1748,11 @@ function dropLootAt(x,y, enemy){
     // NPCs: shop + smith in town
     const shopPos  = {x: cx-4, y: cy-2};
     const smithPos = {x: cx+4, y: cy-2};
+    const chronoPos = {x: cx, y: cy-4};
 
     state.npcs.push({kind:'shop',  name:'Лавочник', x:shopPos.x,  y:shopPos.y});
     state.npcs.push({kind:'smith', name:'Кузнец',   x:smithPos.x, y:smithPos.y});
+    state.npcs.push({kind:'chronicle', name:'Летописец', x:chronoPos.x, y:chronoPos.y});
 
     // Guides (5 tiers) around plaza
     const spots = [
@@ -1604,11 +1785,14 @@ function dropLootAt(x,y, enemy){
     renderInventory();
     log('🏘️ Деревня Ракуса. Подойди к НПС и нажми E.');
     log('🧭 Проводники отправляют в подземелья по уровню (всего 5 этажей).');
+    log('📜 Летописец показывает лидерборд лучших забегов.');
   }
 
   function startAdventure(tierIndex){
     const t = ADVENTURE_TIERS[tierIndex] || ADVENTURE_TIERS[0];
     state.mode = 'dungeon';
+    state.gameOver = false;
+    hideDeathOverlay();
     state.run.active = true;
     state.run.tier = tierIndex;
     state.run.minLvl = t.min;
@@ -1616,6 +1800,9 @@ function dropLootAt(x,y, enemy){
     state.run.floors = RUN_FLOORS;
     state.floor = 1;
     state.run.bossDefeated = false;
+    state.run.pendingBoss = true;
+    state.run.bossSpawn = null;
+    state.run.elapsedMs = 0;
     closeShop();
     genFloor();
     log(`⚔️ Приключение: ${t.name} (рекомендуемый LVL ${t.min}-${t.max}).`);
@@ -1623,6 +1810,9 @@ function dropLootAt(x,y, enemy){
   function returnToVillage(){
     // soft reset: no game over, just back to safety
     state.run.active = false;
+    state.run.pendingBoss = false;
+    state.run.bossSpawn = null;
+    state.run.elapsedMs = 0;
     state.portalActive = false;
     state.enemies = [];
     state.groundLoot = [];
@@ -1697,16 +1887,24 @@ function dropLootAt(x,y, enemy){
     // exit/portal is in last room, but becomes active only after boss dies
     const endRoom = state.rooms[state.rooms.length-1] || start;
     state.exit = {x:endRoom.cx, y:endRoom.cy};
+    state.run.bossSpawn = {x:endRoom.cx, y:endRoom.cy};
+    state.run.pendingBoss = true;
 
     // Enemies scale within bracket
     const minL = state.run.minLvl || 1;
     const maxL = state.run.maxLvl || 5;
     const baseCount = 12 + Math.min(14, state.floor*3);
     for(let i=0;i<baseCount;i++) spawnEnemy(false);
+    const packCount = 1 + RNG.int(2);
+    let eliteCount = 0;
+    for(let p=0; p<packCount; p++){
+      const room = state.rooms.length ? RNG.pick(state.rooms) : {cx:start.cx, cy:start.cy};
+      eliteCount += spawnElitePack({x:room.cx, y:room.cy});
+    }
 
-    // Boss each floor
-    spawnEnemy(true);
-    log(`🧭 Подземелье: этаж ${state.floor}/${RUN_FLOORS}. На этаже есть босс.`);
+    log(`🧭 Подземелье: этаж ${state.floor}/${RUN_FLOORS}. Убей всех мобов, чтобы призвать босса.`);
+    log(`☣️ На этаже элитных паков: ${packCount}, элит: ${eliteCount}.`);
+    log(`🧹 До босса осталось мобов: ${aliveMobsLeft()}`);
 
     genDecor(dx0,dy0,dx1,dy1);
     computeFOV();
@@ -1745,6 +1943,12 @@ function dropLootAt(x,y, enemy){
     if(state.mode==='dungeon' && state.portalActive && player.x===state.exit.x && player.y===state.exit.y){
       playSfx('portal');
       if(state.floor>=RUN_FLOORS){
+        const finalTime = state.run.elapsedMs;
+        if(finalTime>0){
+          pushLeaderboard(finalTime);
+          log(`⏱️ Забег завершен за ${formatRunTime(finalTime)}.`);
+          logLeaderboard('🏁 Лидерборд после забега');
+        }
         log('🏘️ Портал возвращает тебя в деревню.');
         returnToVillage();
         return;
@@ -2113,26 +2317,46 @@ function drawShopNPC(){
       const t=performance.now()*0.006;
       const bob=Math.sin(t + n.x*0.3)*1.1;
 
-      // body
+      const cardColor = (n.kind==='guide') ? '#e9cf72' : (n.kind==='shop' ? '#73d6ff' : (n.kind==='chronicle' ? '#ccb4ff' : '#ff7eb6'));
+      const icon = n.kind==='guide' ? '⚔️' : (n.kind==='shop' ? '🛒' : (n.kind==='chronicle' ? '📜' : '🛠️'));
+      const role = n.kind==='guide' ? 'ДАНЖ' : (n.kind==='shop' ? 'SHOP' : (n.kind==='chronicle' ? 'TOP' : 'SMITH'));
+
+      // stand
+      ctx.fillStyle='rgba(0,0,0,0.35)';
+      ctx.beginPath(); ctx.ellipse(cx,cy+10,11,4,0,0,Math.PI*2); ctx.fill();
+
+      // glow
+      const g = ctx.createRadialGradient(cx, cy-6+bob, 3, cx, cy-6+bob, 24);
+      g.addColorStop(0, `${cardColor}66`);
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(cx, cy-6+bob, 24, 0, Math.PI*2); ctx.fill();
+
+      // portrait marker
       ctx.save();
       ctx.translate(cx, cy+bob);
-      ctx.fillStyle = (n.kind==='guide') ? '#f5d76e' : (n.kind==='shop' ? '#7ed6ff' : '#ff7eb6');
-      ctx.beginPath();
-      ctx.arc(0,0, 7, 0, Math.PI*2);
-      ctx.fill();
-
-      // icon
-      ctx.fillStyle = '#1c1c1c';
-      ctx.font = '10px ui-sans-serif, system-ui';
+      ctx.fillStyle='rgba(10,12,18,0.85)';
+      ctx.fillRect(-12,-18,24,24);
+      ctx.strokeStyle=cardColor;
+      ctx.lineWidth=2;
+      ctx.strokeRect(-12,-18,24,24);
+      ctx.fillStyle='#fff';
+      ctx.font='13px ui-sans-serif, system-ui';
       ctx.textAlign='center'; ctx.textBaseline='middle';
-      const icon = n.kind==='guide' ? '🧭' : (n.kind==='shop' ? '🛒' : '🛠️');
-      ctx.fillText(icon, 0, -1);
+      ctx.fillText(icon, 0, -6);
+
+      // role badge
+      ctx.fillStyle='rgba(8,10,18,0.9)';
+      ctx.fillRect(-15,8,30,10);
+      ctx.fillStyle=cardColor;
+      ctx.font='8px ui-sans-serif, system-ui';
+      ctx.fillText(role, 0, 13);
       ctx.restore();
 
       // name on hover-ish (nearby)
       const d = Math.abs(n.x-player.x) + Math.abs(n.y-player.y);
       if(d<=1){
-        const label = (n.kind==='guide') ? `E: ${n.name}` : `E: ${n.name}`;
+        const label = `E: ${n.name}`;
         ctx.save();
         ctx.fillStyle='rgba(0,0,0,0.6)';
         ctx.font='12px ui-sans-serif, system-ui';
@@ -2201,7 +2425,7 @@ function drawShopNPC(){
     ctx.font='11px ui-monospace, monospace';
     ctx.textAlign='center';
     let label = `LVL ${e.lvl}`;
-    if(e.elite) label = `★ ${label}`;
+    if(e.elite) label = `ELITE • ${label}`;
     ctx.fillText(label, cx, cy-30+bob);
 
     if(e.type===ENEMY.BOSS){
@@ -2363,6 +2587,9 @@ function drawShopNPC(){
   // ==============================
   function updateHUD(){
     ui.floor.textContent = (state.mode==='village') ? 'Деревня' : `${state.floor}/${RUN_FLOORS}`;
+    ui.floorHud.textContent = (state.mode==='village') ? 'Деревня' : `${state.floor}/${RUN_FLOORS}`;
+    ui.mobsLeft.textContent = (state.mode==='dungeon') ? String(aliveMobsLeft()) : '—';
+    ui.runTimer.textContent = state.run.active ? formatRunTime(state.run.elapsedMs) : '--:--';
     ui.lvl.textContent=String(player.lvl);
     ui.gold.textContent=String(player.gold);
     ui.hpText.textContent=`${player.hp}/${player.maxHp}`;
@@ -2389,23 +2616,31 @@ function drawShopNPC(){
     playSfx('lose');
 
     if(state.mode==='dungeon'){
-      // Soft fail: kick back to village
       const lost = Math.floor(player.gold * 0.10);
-      if(lost>0){ player.gold -= lost; log(`☠️ Ты пал в подземелье… теряешь ${lost} золота и возвращаешься в деревню.`); }
-      else { log('☠️ Ты пал в подземелье… и возвращаешься в деревню.'); }
-
-      player.hp = player.maxHp;
-            returnToVillage();
+      if(lost>0){ player.gold -= lost; log(`☠️ Ты пал в подземелье… теряешь ${lost} золота.`); }
+      else { log('☠️ Ты пал в подземелье…'); }
+      state.run.active = false;
+      state.run.elapsedMs = 0;
+      state.gameOver = true;
+      updateHUD();
+      showDeathOverlay('Ты погиб в подземелье. Нажми "Возрождение", чтобы вернуться в деревню.');
       return;
     }
 
     state.gameOver=true;
-    log('☠️ Ракус пал. R — рестарт.');
+    showDeathOverlay('Ты погиб. Нажми "Возрождение", чтобы вернуться в деревню.');
+    log('☠️ Ракус пал.');
   }
   function endWin(){
     state.gameOver=true;
     playSfx('win');
     log('🎉 Победа. НИКИТОС унижен. R — рестарт.');
+  }
+  function respawnToVillage(){
+    hideDeathOverlay();
+    state.gameOver = false;
+    player.hp = player.maxHp;
+    returnToVillage();
   }
 
   // ==============================
@@ -2439,6 +2674,10 @@ let last=performance.now();
 
   function loop(now){
     const dt=now-last; last=now;
+    if(state.run.active && !state.gameOver){
+      state.run.elapsedMs += dt;
+      if((now|0)%200<20) updateHUD();
+    }
     if(!state.shop.open){
       player.crit.cd=Math.max(0, player.crit.cd-dt);
       player.iFrames=Math.max(0, player.iFrames-dt);
@@ -2623,7 +2862,8 @@ let last=performance.now();
     const tx = Math.floor(wx);
     const ty = Math.floor(wy);
     setMoveTargetTile(tx,ty);
-  
+  }
+
   // ==============================
   // Mobile joystick (right-bottom)
   // ==============================
@@ -2700,8 +2940,6 @@ let last=performance.now();
     e.preventDefault();
   }, {passive:false});
 
-}
-
   // Touch handlers (movement uses joystick on mobile)
   canvas.addEventListener('touchstart', (e)=>{
     ensureAudio();
@@ -2738,6 +2976,7 @@ let last=performance.now();
     const k = e.key.toLowerCase();
     if(k==='escape'){ if(state.shop.open) closeShop(); return; }
     if(k==='r'){ start(); return; }
+    if(state.gameOver) return;
     if(k==='m'){ toggleMusic(); return; }
     if(k==='q'){ ensureAudio(); useRakusCrit(); return; }
     if(k==='e'){
@@ -2749,6 +2988,7 @@ let last=performance.now();
         if(!npc){ log('(рядом нет НПС)'); return; }
 
         if(npc.kind==='guide'){ startAdventure(npc.tier); return; }
+        if(npc.kind==='chronicle'){ logLeaderboard(); return; }
         if(npc.kind==='shop'){ spawnShop('shop', npc.x, npc.y); openShop(); return; }
         if(npc.kind==='smith'){ spawnShop('smith', npc.x, npc.y); openShop(); return; }
       }
@@ -2775,6 +3015,7 @@ let last=performance.now();
     resetLog();
     state.floor=1;
     state.gameOver=false;
+    hideDeathOverlay();
     closeShop();
 
     player.lvl=1; player.xp=0; player.xpNeed=10;
@@ -2784,6 +3025,9 @@ let last=performance.now();
     player.gold=0;
     player.crit.cd=0;
     player.iFrames=0;
+    state.run.elapsedMs = 0;
+    state.run.pendingBoss = false;
+    state.run.bossSpawn = null;
 
     recalcStats();
     player.hp=player.maxHp;
@@ -2949,6 +3193,7 @@ kind){
   window.addEventListener('pointerdown', ensureAudio, { once:true });
   ui.musicBtn.addEventListener('click', ()=>{ ensureAudio(); toggleMusic(); });
   ui.restartBtn.addEventListener('click', start);
+  ui.respawnBtn.addEventListener('click', respawnToVillage);
 
   // Boot
   start();
