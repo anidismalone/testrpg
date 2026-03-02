@@ -12,8 +12,8 @@
       --log-h: 176px;
       --stack-gap: 12px;
     }
-    html,body{ margin:0; height:100%; background:#07080b; font-family: ui-monospace, Menlo, Consolas, monospace; }
-    .wrap{ height:100%; display:flex; align-items:center; justify-content:center; padding:16px; box-sizing:border-box;}
+    html,body{ margin:0; height:100%; min-height:100dvh; background:#07080b; font-family: ui-monospace, Menlo, Consolas, monospace; }
+    .wrap{ height:100%; min-height:100dvh; display:flex; align-items:center; justify-content:center; padding:16px; box-sizing:border-box;}
     .ui{ display:flex; gap:14px; align-items:flex-start; position:relative; }
     .gameCol{
       position:relative;
@@ -76,9 +76,8 @@
     }
     .panel.inventory{
       background:
-        radial-gradient(1000px 600px at 25% 0%, rgba(255,255,255,.11), rgba(255,255,255,0) 55%),
-        linear-gradient(180deg, rgba(70,46,22,.55), rgba(30,22,14,.35)),
-        repeating-linear-gradient(90deg, rgba(255,255,255,.03) 0 8px, rgba(0,0,0,.03) 8px 16px);
+        radial-gradient(1200px 700px at 20% 0%, rgba(230,244,255,.18), rgba(230,244,255,0) 56%),
+        linear-gradient(180deg, rgba(24,34,52,.92), rgba(12,18,30,.95));
       box-shadow:
         0 22px 90px rgba(0,0,0,.62),
         inset 0 0 0 2px rgba(0,0,0,.35),
@@ -272,6 +271,17 @@
     .fab:active{ transform: translateY(1px); }
 
     .invTitle{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+    .panelView{ display:none; }
+    .panelView.active{ display:block; }
+    .panelSwitch{
+      margin-left:auto;
+      font-size:11px;
+      padding:6px 8px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,.16);
+      background: rgba(20,22,30,0.72);
+      color:#fff;
+    }
     .invClose{
       display:none;
       border:1px solid rgba(255,255,255,0.16);
@@ -321,10 +331,10 @@
 
 @media (max-width: 980px){
       .wrap{ padding:0; }
-      .ui{ width:100vw; height:100vh; padding-top:44px; box-sizing:border-box; }
-      .gameCol{ width:100vw; gap:0; }
+      .ui{ width:100vw; height:100dvh; padding-top:0; box-sizing:border-box; align-items:center; justify-content:center; }
+      .gameCol{ width:100vw; height:100dvh; gap:0; align-items:center; justify-content:center; }
       .logDock{ display:none; }
-      .cornerHud{ right:10px; top:52px; min-width:160px; }
+      .cornerHud{ right:8px; top:calc(env(safe-area-inset-top, 0px) + 8px); min-width:152px; }
       /* hide desktop panels */
       #invPanel{ display:none; }
       .fab{ display:block; }
@@ -343,7 +353,7 @@
       body.invOpen .invClose{ display:inline-flex; align-items:center; justify-content:center; }
       body.invOpen .fab{ display:none; }
       /* canvas: fit to screen without stretching */
-      canvas{ height:calc(100vh - 44px); width:auto; max-width:100vw; display:block; margin:0 auto; touch-action:none; }
+      canvas{ width:100vw; height:auto; max-height:100dvh; border-radius:0; display:block; margin:0 auto; touch-action:none; }
       .joy{ display:block; }
     }
     @media (min-width: 981px){
@@ -391,50 +401,56 @@
     <!-- INVENTORY LEFT -->
     <div class="panel inventory" id="invPanel">
       <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
-      <div class="title invTitle"><span>🎒 Инвентарь Ракуса (v5.4 mobile)</span><button id="invClose" class="invClose" aria-label="Закрыть">✕</button></div>
-
-      <div class="row"><span>Этаж</span><span id="floor">1</span></div>
-      <div class="row"><span>Уровень</span><span id="lvl">1</span></div>
-      <div class="row"><span>Золото</span><span id="gold">0</span></div>
-
-      <div class="row"><span>HP</span><span id="hpText">30/30</span></div>
-      <div class="bar"><div class="fill hp" id="hpFill"></div></div>
-
-      <div class="row"><span>XP</span><span id="xpText">0/10</span></div>
-      <div class="bar"><div class="fill xp" id="xpFill"></div></div>
-
-      <div class="row"><span>ATK</span><span id="atk">5</span></div>
-      <div class="row"><span>DEF</span><span id="def">0</span></div>
-
-      <div class="row"><span>Crit%</span><span id="critPct">14%</span></div>
-      <div class="row"><span>Lifesteal</span><span id="lsPct">0%</span></div>
-      <div class="row"><span>CDR</span><span id="cdrPct">0%</span></div>
-
-      <div class="pill" id="critPill">✨ Ракус Крит (Q): <span id="critState">готов</span></div>
-
-      <div class="invTitle">
-        <span>Экипировка</span>
-        <span class="small">клик: снять/надеть</span>
+      <div class="title invTitle">
+        <span>🎒 Панель Ракуса</span>
+        <button id="panelInvToggle" class="panelSwitch">Инвентарь</button>
+        <button id="invClose" class="invClose" aria-label="Закрыть">✕</button>
       </div>
-      <div class="equipGrid" id="equipGrid"></div>
+      <div id="panelStatsView" class="panelView active">
+        <div class="row"><span>Этаж</span><span id="floor">1</span></div>
+        <div class="row"><span>Уровень</span><span id="lvl">1</span></div>
+        <div class="row"><span>Золото</span><span id="gold">0</span></div>
 
-      <div class="invTitle">
-        <span>Рюкзак</span>
-        <span class="small" id="bagInfo">0/16</span>
-      </div>
-      <div class="bagGrid" id="bagGrid"></div>
+        <div class="row"><span>HP</span><span id="hpText">30/30</span></div>
+        <div class="bar"><div class="fill hp" id="hpFill"></div></div>
 
-      <div class="keys">
-        Тап по экрану — идти туда (мобайл)
+        <div class="row"><span>XP</span><span id="xpText">0/10</span></div>
+        <div class="bar"><div class="fill xp" id="xpFill"></div></div>
+
+        <div class="row"><span>ATK</span><span id="atk">5</span></div>
+        <div class="row"><span>DEF</span><span id="def">0</span></div>
+
+        <div class="row"><span>Crit%</span><span id="critPct">14%</span></div>
+        <div class="row"><span>Lifesteal</span><span id="lsPct">0%</span></div>
+        <div class="row"><span>CDR</span><span id="cdrPct">0%</span></div>
+
+        <div class="pill" id="critPill">✨ Ракус Крит (Q): <span id="critState">готов</span></div>
+
+        <div class="keys">
+          Тап по экрану — идти туда (мобайл)
 WASD / стрелки — ходить (ПК)<br>
-        Shift+клик или Space — атака (ПК)<br>
-        Q — Ракус Крит • E — магазин рядом<br>
-        M — mute • R — рестарт • ESC — закрыть магазин
-      </div>
+          Shift+клик или Space — атака (ПК)<br>
+          Q — Ракус Крит • E — магазин рядом<br>
+          M — mute • R — рестарт • ESC — закрыть магазин
+        </div>
 
-      <div class="btnrow">
-        <button id="musicBtn">🎵 Music: ON</button>
-        <button id="restartBtn">🔁 Restart</button>
+        <div class="btnrow">
+          <button id="musicBtn">🎵 Music: ON</button>
+          <button id="restartBtn">🔁 Restart</button>
+        </div>
+      </div>
+      <div id="panelInventoryView" class="panelView">
+        <div class="invTitle">
+          <span>Экипировка</span>
+          <span class="small">клик: снять/надеть</span>
+        </div>
+        <div class="equipGrid" id="equipGrid"></div>
+
+        <div class="invTitle">
+          <span>Рюкзак</span>
+          <span class="small" id="bagInfo">0/32</span>
+        </div>
+        <div class="bagGrid" id="bagGrid"></div>
       </div>
     </div>
 
@@ -496,6 +512,9 @@ WASD / стрелки — ходить (ПК)<br>
     deathOverlay: document.getElementById('deathOverlay'),
     deathText: document.getElementById('deathText'),
     respawnBtn: document.getElementById('respawnBtn'),
+    panelStatsView: document.getElementById('panelStatsView'),
+    panelInventoryView: document.getElementById('panelInventoryView'),
+    panelInvToggle: document.getElementById('panelInvToggle'),
   };
 
   const IS_MOBILE = window.matchMedia('(max-width: 980px)').matches;
@@ -531,6 +550,8 @@ WASD / стрелки — ходить (ПК)<br>
   const ENEMY = { ORC:'orc', WOLF:'wolf', WRAITH:'wraith', BOSS:'boss' };
 
   const RUN_FLOORS = 5;
+  const BAG_SIZE = 32;
+  const MOVE_STEP_MS = 150;
   const LEADERBOARD_KEY = 'rakus_run_leaderboard_v1';
   const ADVENTURE_TIERS = [
     {name:'Пещеры новичков', min:1,  max:5},
@@ -539,6 +560,7 @@ WASD / стрелки — ходить (ПК)<br>
     {name:'Проклятый город',  min:15, max:20},
     {name:'Бездна Ракуса',    min:20, max:25},
   ];
+  const BIOME_NAMES = ['Стартовый', 'Снежный', 'Огненный', 'Болотный', 'Божественный'];
 
 
   // Loot/equipment
@@ -561,6 +583,7 @@ WASD / стрелки — ходить (ПК)<br>
     cam: { x:0, y:0, shake:0 },
     gameOver: false,
     musicOn: true,
+    moveCd: 0,
     mouse: { x:W/2, y:H/2, worldX:0, worldY:0 },
 
     // portal on current map (in dungeon: to next floor / to village)
@@ -605,7 +628,7 @@ WASD / стрелки — ходить (ПК)<br>
     iFrames:0,
     passives: { critBonus:0, lifesteal:0, cdr:0 },
     equip: { weapon:null, armor:null, ring:null, amulet:null },
-    bag: Array(16).fill(null),
+    bag: Array(BAG_SIZE).fill(null),
   };
 
   function bagCount(){ return player.bag.filter(x=>x!==null).length; }
@@ -1718,32 +1741,28 @@ function dropLootAt(x,y, enemy){
     state.run.active = false;
     state.floor = 1;
 
-    // Big grassy map + simple town square
+    // Compact village
     for(let y=0;y<MAP_H;y++){
       for(let x=0;x<MAP_W;x++){
-        state.map[y][x] = T.GRASS;
+        state.map[y][x] = T.WALL;
       }
     }
 
-    // border walls for cozy "safe" vibe
-    for(let x=1;x<MAP_W-1;x++){ state.map[1][x]=T.WALL; state.map[MAP_H-2][x]=T.WALL; }
-    for(let y=1;y<MAP_H-1;y++){ state.map[y][1]=T.WALL; state.map[y][MAP_W-2]=T.WALL; }
-
     // town square
     const cx = (MAP_W/2)|0, cy = (MAP_H/2)|0;
-    carveRect(cx-10, cy-7, 21, 15, T.PATH);
-    carveRect(cx-6,  cy-3, 13, 7,  T.FLOOR); // plaza center
-
-    // paths to edges
-    carveHCorridor(2, MAP_W-3, cy, T.PATH);
-    carveVCorridor(2, MAP_H-3, cx, T.PATH);
+    const vx0 = cx-14, vy0 = cy-9, vw = 29, vh = 19;
+    carveRect(vx0, vy0, vw, vh, T.GRASS);
+    carveRect(cx-9, cy-6, 19, 13, T.PATH);
+    carveRect(cx-5, cy-2, 11, 5, T.FLOOR);
+    carveHCorridor(cx-10, cx+10, cy, T.PATH);
+    carveVCorridor(cy-6, cy+6, cx, T.PATH);
 
     // player spawn
     player.x = cx; player.y = cy+4;
     player.px=player.x; player.py=player.y;
 
     // Decor
-    genDecor(6,6,MAP_W-6,MAP_H-6);
+    genDecor(vx0+1,vy0+1,vx0+vw-1,vy0+vh-1);
 
     // NPCs: shop + smith in town
     const shopPos  = {x: cx-4, y: cy-2};
@@ -1756,11 +1775,11 @@ function dropLootAt(x,y, enemy){
 
     // Guides (5 tiers) around plaza
     const spots = [
-      {x:cx-8,y:cy+2},
-      {x:cx-4,y:cy+2},
+      {x:cx-8,y:cy+4},
+      {x:cx-4,y:cy+4},
       {x:cx,y:cy+2},
-      {x:cx+4,y:cy+2},
-      {x:cx+8,y:cy+2},
+      {x:cx+4,y:cy+4},
+      {x:cx+8,y:cy+4},
     ];
     for(let i=0;i<ADVENTURE_TIERS.length;i++){
       const t = ADVENTURE_TIERS[i];
@@ -1779,6 +1798,7 @@ function dropLootAt(x,y, enemy){
 
     state.exit = {x: cx, y: cy-6}; // decorative portal in village (not used)
     state.portalActive = false;
+    setPanelMode('stats');
 
     computeFOV();
     updateHUD();
@@ -1806,6 +1826,7 @@ function dropLootAt(x,y, enemy){
     closeShop();
     genFloor();
     log(`⚔️ Приключение: ${t.name} (рекомендуемый LVL ${t.min}-${t.max}).`);
+    log(`🌍 Биом: ${BIOME_NAMES[clamp(tierIndex,0,BIOME_NAMES.length-1)]}.`);
   }
   function returnToVillage(){
     // soft reset: no game over, just back to safety
@@ -1916,6 +1937,7 @@ function dropLootAt(x,y, enemy){
   // ==============================
   function tryMove(dx,dy){
     if(state.gameOver || state.shop.open) return;
+    if(state.moveCd>0) return;
     const nx=player.x+dx, ny=player.y+dy;
     if(isBlocked(nx,ny)){ playSfx('bump'); return; }
 
@@ -1936,6 +1958,7 @@ function dropLootAt(x,y, enemy){
 
     player.x=nx; player.y=ny;
     player.facing={x:dx,y:dy};
+    state.moveCd = MOVE_STEP_MS;
 
     pickupGoldAt(player.x, player.y);
     pickupLootAt(player.x, player.y);
@@ -1970,7 +1993,7 @@ function dropLootAt(x,y, enemy){
   // Inventory render + tooltips
   // ==============================
   function renderInventory(){
-    ui.bagInfo.textContent = `${bagCount()}/16`;
+    ui.bagInfo.textContent = `${bagCount()}/${BAG_SIZE}`;
 
     const slots = [
       {key:SLOT.WEAPON, label:'Weapon'},
@@ -2083,7 +2106,7 @@ function dropLootAt(x,y, enemy){
     return { wx: sx / TILE + state.cam.x, wy: sy / TILE + state.cam.y };
   }
 
-  const PAL = {
+  const BASE_PAL = {
     grass1:'#12301f', grass2:'#0f261a',
     path1:'#2a1f15',  path2:'#34271b',
     floor1:'#1a2236', floor2:'#141b2e',
@@ -2091,6 +2114,24 @@ function dropLootAt(x,y, enemy){
     water1:'#0b2a45', water2:'#0f3b63',
     fog:'rgba(0,0,0,0.55)', dim:'rgba(0,0,0,0.25)',
   };
+  const BIOME_PALS = [
+    // 1: default
+    {},
+    // 2: snow
+    { grass1:'#d6e4f3', grass2:'#c8d9ee', path1:'#aebfd3', path2:'#9eb1c8', floor1:'#e6f0ff', floor2:'#d7e7fb', wall1:'#9aa8bb', wall2:'#8997ab', water1:'#8ac7ff', water2:'#5aa8ea' },
+    // 3: fire
+    { grass1:'#5b2218', grass2:'#4c1b13', path1:'#7c2f16', path2:'#91361a', floor1:'#38170f', floor2:'#2d120b', wall1:'#7a4331', wall2:'#632f21', water1:'#cc4c12', water2:'#f0751e' },
+    // 4: swamp
+    { grass1:'#1e3221', grass2:'#1a2a1b', path1:'#3b3a23', path2:'#34331f', floor1:'#1b2620', floor2:'#17211b', wall1:'#49554a', wall2:'#3c473d', water1:'#2f4f3b', water2:'#406c4f' },
+    // 5: divine
+    { grass1:'#eef4ff', grass2:'#e2ecff', path1:'#d7d0c0', path2:'#cec6b3', floor1:'#f9fbff', floor2:'#edf4ff', wall1:'#c8d2e6', wall2:'#b4c0d8', water1:'#c7ecff', water2:'#a9dcff' },
+  ];
+  const MERGED_BIOME_PALS = BIOME_PALS.map(b => Object.assign({}, BASE_PAL, b));
+  function activePalette(){
+    if(state.mode!=='dungeon') return BASE_PAL;
+    const i = clamp(state.run.tier||0, 0, MERGED_BIOME_PALS.length-1);
+    return MERGED_BIOME_PALS[i];
+  }
 
   function drawTile(x,y,tile){
     const {sx,sy}=worldToScreen(x,y);
@@ -2100,12 +2141,13 @@ function dropLootAt(x,y, enemy){
     if(!seen) return;
     const visible = state.vis[y]?.[x]===true;
 
+    const pal = activePalette();
     let a,b;
-    if(tile===T.GRASS){ a=PAL.grass1; b=PAL.grass2; }
-    else if(tile===T.PATH){ a=PAL.path1; b=PAL.path2; }
-    else if(tile===T.WALL){ a=PAL.wall1; b=PAL.wall2; }
-    else if(tile===T.WATER){ a=PAL.water1; b=PAL.water2; }
-    else { a=PAL.floor1; b=PAL.floor2; }
+    if(tile===T.GRASS){ a=pal.grass1; b=pal.grass2; }
+    else if(tile===T.PATH){ a=pal.path1; b=pal.path2; }
+    else if(tile===T.WALL){ a=pal.wall1; b=pal.wall2; }
+    else if(tile===T.WATER){ a=pal.water1; b=pal.water2; }
+    else { a=pal.floor1; b=pal.floor2; }
 
     ctx.fillStyle = ((x+y)&1)?a:b;
     ctx.fillRect(sx,sy,TILE,TILE);
@@ -2138,10 +2180,10 @@ function dropLootAt(x,y, enemy){
     }
 
     if(!visible){
-      ctx.fillStyle = PAL.fog;
+      ctx.fillStyle = pal.fog;
       ctx.fillRect(sx,sy,TILE,TILE);
     } else {
-      ctx.fillStyle = PAL.dim;
+      ctx.fillStyle = pal.dim;
       ctx.fillRect(sx,sy,TILE,TILE);
     }
   }
@@ -2674,6 +2716,7 @@ let last=performance.now();
 
   function loop(now){
     const dt=now-last; last=now;
+    state.moveCd = Math.max(0, state.moveCd - dt);
     if(state.run.active && !state.gameOver){
       state.run.elapsedMs += dt;
       if((now|0)%200<20) updateHUD();
@@ -2684,10 +2727,9 @@ let last=performance.now();
     }
 
     
-    // Joystick movement (mobile): step-by-step, no "flying"
+    // Joystick movement (mobile): unified movement speed cap
     if(IS_MOBILE && joy && joy.active && joy.mag > joy.dead && !state.shop.open && !state.gameOver){
-      joy.moveCd -= dt;
-      if(joy.moveCd <= 0){
+      if(state.moveCd<=0){
         const ax = Math.abs(joy.dx), ay = Math.abs(joy.dy);
         let mdx=0, mdy=0;
         if(ax >= ay){
@@ -2696,29 +2738,6 @@ let last=performance.now();
           mdy = joy.dy > 0 ? 1 : -1;
         }
         tryMove(mdx, mdy);
-        // speed tuned for grid feel
-        joy.moveCd = 0.10;
-      }
-    }else if(joy){
-      joy.moveCd = Math.min(joy.moveCd, 0.10);
-    }
-
-// Auto-move along path (tap-to-move)
-    if(!IS_MOBILE && state.autoPath && state.autoPath.length && !state.shop.open && !state.gameOver){
-      state.autoMoveCd -= dt;
-      if(state.autoMoveCd <= 0){
-        const next = state.autoPath[0];
-        const dx = next.x - player.x;
-        const dy = next.y - player.y;
-        // if path got blocked, stop
-        if(Math.abs(dx)+Math.abs(dy)!==1 || isBlocked(next.x,next.y)){
-          state.autoPath = null;
-        }else{
-          tryMove(dx,dy);
-          state.autoPath.shift();
-          state.autoMoveCd = 0.085;
-          // if reached tile next to enemy and player facing it, let user tap enemy again for attack (keeps it simple)
-        }
       }
     }
 
@@ -2756,19 +2775,28 @@ let last=performance.now();
   // ==============================
   // Mobile UI: inventory overlay
   // ==============================
+  function setPanelMode(mode){
+    const inv = mode === 'inventory';
+    ui.panelStatsView.classList.toggle('active', !inv);
+    ui.panelInventoryView.classList.toggle('active', inv);
+    ui.panelInvToggle.textContent = inv ? 'Статы' : 'Инвентарь';
+  }
+  function togglePanelMode(){
+    const invOpen = ui.panelInventoryView.classList.contains('active');
+    setPanelMode(invOpen ? 'stats' : 'inventory');
+    renderInventory();
+  }
   const invBtn = document.getElementById('invBtn');
   const invClose = document.getElementById('invClose');
-  function openInv(){ document.body.classList.add('invOpen'); }
-  function closeInv(){ document.body.classList.remove('invOpen'); }
+  function openInv(){ document.body.classList.add('invOpen'); setPanelMode('inventory'); renderInventory(); }
+  function closeInv(){ document.body.classList.remove('invOpen'); setPanelMode('stats'); }
   invBtn.addEventListener('click', (e)=>{ e.preventDefault(); openInv(); });
   invClose.addEventListener('click', (e)=>{ e.preventDefault(); closeInv(); });
+  ui.panelInvToggle.addEventListener('click', (e)=>{ e.preventDefault(); togglePanelMode(); });
 
   // ==============================
   // Touch: tap-to-move (pathfind)
   // ==============================
-  state.autoPath = null;
-  state.autoMoveCd = 0;
-
   function isPassableForPath(x,y){
     if(x<0||y<0||x>=MAP_W||y>=MAP_H) return false;
     if(isBlocked(x,y)) return false; // walls, enemies, etc.
@@ -2822,6 +2850,7 @@ let last=performance.now();
 
   function setMoveTargetTile(tx,ty){
     if(state.gameOver || state.shop.open) return;
+    if(state.moveCd>0) return;
 
     // If target is enemy: go to an adjacent tile, not onto enemy
     const e = enemyAt(tx,ty);
@@ -2848,9 +2877,13 @@ let last=performance.now();
       tx=opts[0].x; ty=opts[0].y;
     }
 
-    const path = findPath(player.x,player.y,tx,ty);
-    state.autoPath = path;
-    state.autoMoveCd = 0;
+    const dx = tx - player.x;
+    const dy = ty - player.y;
+    if(dx===0 && dy===0) return;
+    let sx=0, sy=0;
+    if(Math.abs(dx) >= Math.abs(dy)) sx = dx>0 ? 1 : -1;
+    else sy = dy>0 ? 1 : -1;
+    tryMove(sx,sy);
   }
 
   function tapToMoveFromEvent(clientX, clientY){
@@ -2876,8 +2909,7 @@ let last=performance.now();
     dx:0, dy:0,
     mag:0,
     r:52, // stick travel radius (px)
-    dead:0.18,
-    moveCd:0
+    dead:0.18
   };
 
   function joyReset(){
@@ -3021,10 +3053,11 @@ let last=performance.now();
     player.lvl=1; player.xp=0; player.xpNeed=10;
     player.base={maxHp:30, atk:5, def:0};
     player.equip={ weapon:null, armor:null, ring:null, amulet:null };
-    player.bag=Array(16).fill(null);
+    player.bag=Array(BAG_SIZE).fill(null);
     player.gold=0;
     player.crit.cd=0;
     player.iFrames=0;
+    state.moveCd=0;
     state.run.elapsedMs = 0;
     state.run.pendingBoss = false;
     state.run.bossSpawn = null;
